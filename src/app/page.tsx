@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import MagnetInputForm from './components/MagnetInputForm';
-import TorrentPlayer from './components/TorrentPlayer';
+import TorrentPlayerBackend from './components/TorrentPlayerBackend';
 import HlsPlayer from './components/HlsPlayer';
 import DownloadButton from './components/DownloadButton';
 
@@ -13,16 +13,27 @@ export default function Home() {
   } | null>(null);
   const [error, setError] = useState<string>('');
 
+  console.log('=== PAGE RENDER ===');
+  console.log('Active stream:', activeStream);
+  console.log('Error:', error);
+
   const handleSubmit = (url: string, type: 'magnet' | 'hls') => {
+    console.log('=== PAGE: handleSubmit called ===');
+    console.log('URL:', url);
+    console.log('Type:', type);
     setError('');
     setActiveStream({ url, type });
+    console.log('Active stream set:', { url, type });
   };
 
   const handleError = (errorMsg: string) => {
+    console.error('=== PAGE: Error received ===');
+    console.error('Error message:', errorMsg);
     setError(errorMsg);
   };
 
   const handleReset = () => {
+    console.log('=== PAGE: Reset called ===');
     setActiveStream(null);
     setError('');
   };
@@ -62,7 +73,7 @@ export default function Home() {
 
             {activeStream.type === 'magnet' && (
               <>
-                <TorrentPlayer magnet={activeStream.url} onError={handleError} />
+                <TorrentPlayerBackend magnet={activeStream.url} onError={handleError} />
                 <DownloadButton type="torrent" torrentFiles={[]} />
               </>
             )}

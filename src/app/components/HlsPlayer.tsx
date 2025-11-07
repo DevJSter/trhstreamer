@@ -21,13 +21,27 @@ export default function HlsPlayer({ m3u8Url, onError }: HlsPlayerProps) {
   const [currentQuality, setCurrentQuality] = useState<number>(-1);
 
   useEffect(() => {
+    console.log('=== HLS PLAYER: Component mounted ===');
+    console.log('HLS URL:', m3u8Url);
     let mounted = true;
 
     const initHls = async () => {
-      if (!videoRef.current) return;
+      console.log('HLS: Initializing player...');
+      
+      // Add a small delay to ensure video ref is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!videoRef.current) {
+        console.error('HLS: Video ref is null after delay!');
+        onError('Video element not ready');
+        return;
+      }
+
+      console.log('HLS: Video ref is ready');
 
       // Check if browser natively supports HLS (Safari)
       if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('HLS: Browser supports native HLS playback');
         videoRef.current.src = m3u8Url;
         setLoading(false);
         return;
@@ -35,16 +49,23 @@ export default function HlsPlayer({ m3u8Url, onError }: HlsPlayerProps) {
 
       // Use hls.js for browsers that don't natively support HLS
       try {
+        console.log('HLS: Importing hls.js...');
         const Hls = (await import('hls.js')).default;
+        console.log('HLS: hls.js imported successfully');
 
         if (!Hls.isSupported()) {
+          console.error('HLS: hls.js is not supported in this browser');
           onError('HLS is not supported in this browser');
           setLoading(false);
           return;
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          console.log('HLS: Component unmounted, aborting');
+          return;
+        }
 
+        console.log('HLS: Creating Hls instance...');
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
@@ -52,11 +73,18 @@ export default function HlsPlayer({ m3u8Url, onError }: HlsPlayerProps) {
 
         hlsRef.current = hls;
 
+        console.log('HLS: Loading source:', m3u8Url);
         hls.loadSource(m3u8Url);
+        console.log('HLS: Attaching media to video element');
         hls.attachMedia(videoRef.current);
 
         hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-          if (!mounted) return;
+          console.log('=== HLS: Manifest parsed successfully ===');
+          console.log('HLS: Levels available:', data.levels.length);
+          if (!mounted) {
+            console.log('HLS: Component unmounted during manifest parse');
+            return;
+          }
           
           setLoading(false);
 
@@ -67,25 +95,35 @@ export default function HlsPlayer({ m3u8Url, onError }: HlsPlayerProps) {
               bitrate: level.bitrate,
               index,
             }));
+            console.log('HLS: Quality levels:', levelList);
             setQualities(levelList);
             setCurrentQuality(hls.currentLevel);
           }
         });
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.error('=== HLS: Error event ===');
+          console.error('HLS: Error type:', data.type);
+          console.error('HLS: Error details:', data.details);
+          console.error('HLS: Fatal:', data.fatal);
+          console.error('HLS: Full error data:', data);
+          
           if (!mounted) return;
 
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
+                console.error('HLS: Network error, attempting recovery...');
                 onError('Network error loading HLS stream');
                 hls.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
+                console.error('HLS: Media error, attempting recovery...');
                 onError('Media error in HLS stream');
                 hls.recoverMediaError();
                 break;
               default:
+                console.error('HLS: Fatal error, destroying player');
                 onError('Fatal error loading HLS stream');
                 hls.destroy();
                 break;
@@ -94,6 +132,7 @@ export default function HlsPlayer({ m3u8Url, onError }: HlsPlayerProps) {
         });
 
         hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+          console.log('HLS: Level switched to:', data.level);
           if (mounted) {
             setCurrentQuality(data.level);
           }

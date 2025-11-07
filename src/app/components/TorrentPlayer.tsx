@@ -28,19 +28,42 @@ export default function TorrentPlayer({ magnet, onError }: TorrentPlayerProps) {
   const torrentRef = useRef<any>(null);
 
   useEffect(() => {
+    console.log('=== TORRENT PLAYER: Component mounted ===');
+    console.log('Magnet link:', magnet);
     let mounted = true;
 
     const initTorrent = async () => {
       try {
+        console.log('TORRENT: Starting WebTorrent initialization...');
         // Dynamically import WebTorrent for browser
-        const WebTorrent = (await import('webtorrent')).default;
+        const WebTorrentModule = await import('webtorrent');
+        console.log('TORRENT: WebTorrent module imported:', WebTorrentModule);
+        const WebTorrent = WebTorrentModule.default;
+        console.log('TORRENT: WebTorrent class:', WebTorrent);
         
-        if (!mounted) return;
+        if (!mounted) {
+          console.log('TORRENT: Component unmounted, aborting');
+          return;
+        }
 
-        clientRef.current = new WebTorrent();
+        console.log('TORRENT: Creating WebTorrent client...');
+        const client = new WebTorrent();
+        console.log('TORRENT: Client instance created:', client);
+        clientRef.current = client;
+        
+        console.log('TORRENT: Adding magnet link...');
+        console.log('TORRENT: Magnet URI:', magnet);
 
-        clientRef.current.add(magnet, (torrent: any) => {
-          if (!mounted) return;
+        client.add(magnet, (torrent: any) => {
+          console.log('=== TORRENT: Torrent added successfully ===');
+          console.log('Torrent name:', torrent.name);
+          console.log('Torrent info hash:', torrent.infoHash);
+          console.log('Number of files:', torrent.files.length);
+          
+          if (!mounted) {
+            console.log('TORRENT: Component unmounted during add callback');
+            return;
+          }
 
           torrentRef.current = torrent;
 
@@ -49,19 +72,23 @@ export default function TorrentPlayer({ magnet, onError }: TorrentPlayerProps) {
             name: file.name,
             length: file.length,
           }));
+          console.log('TORRENT: Files in torrent:', torrentFiles);
           setFiles(torrentFiles);
 
           // Find first playable video file
           const playableIndex = torrent.files.findIndex((file: any) => 
             /\.(mp4|webm|ogg|mkv)$/i.test(file.name)
           );
+          console.log('TORRENT: Playable file index:', playableIndex);
 
           if (playableIndex === -1) {
+            console.error('TORRENT: No playable video file found');
             onError('No playable video file found in torrent');
             setLoading(false);
             return;
           }
 
+          console.log('TORRENT: Playing file:', torrent.files[playableIndex].name);
           setSelectedFileIndex(playableIndex);
           playFile(torrent.files[playableIndex]);
 
@@ -69,14 +96,17 @@ export default function TorrentPlayer({ magnet, onError }: TorrentPlayerProps) {
           const statsInterval = setInterval(() => {
             if (!mounted || !torrent) return;
             
-            setStats({
+            const stats = {
               progress: torrent.progress * 100,
               downloadSpeed: torrent.downloadSpeed,
               numPeers: torrent.numPeers,
-            });
+            };
+            console.log('TORRENT: Stats update:', stats);
+            setStats(stats);
           }, 1000);
 
           torrent.on('error', (err: Error) => {
+            console.error('TORRENT: Torrent error event:', err);
             if (mounted) {
               onError(`Torrent error: ${err.message}`);
             }
@@ -85,14 +115,22 @@ export default function TorrentPlayer({ magnet, onError }: TorrentPlayerProps) {
           return () => clearInterval(statsInterval);
         });
 
-        clientRef.current.on('error', (err: Error) => {
+        client.on('error', (err: Error) => {
+          console.error('TORRENT: WebTorrent client error event:', err);
           if (mounted) {
             onError(`WebTorrent error: ${err.message}`);
             setLoading(false);
           }
         });
+        
+        client.on('warning', (err: Error) => {
+          console.warn('TORRENT: WebTorrent warning event:', err);
+        });
+        
+        console.log('TORRENT: All event listeners attached');
 
       } catch (err) {
+        console.error('TORRENT: Failed to initialize:', err);
         if (mounted) {
           onError(`Failed to initialize torrent: ${err instanceof Error ? err.message : 'Unknown error'}`);
           setLoading(false);
@@ -101,20 +139,27 @@ export default function TorrentPlayer({ magnet, onError }: TorrentPlayerProps) {
     };
 
     const playFile = (file: any) => {
+      console.log('TORRENT: playFile called for:', file.name);
       if (videoRef.current) {
+        console.log('TORRENT: Video ref exists, rendering to video element');
         file.renderTo(videoRef.current, {
           autoplay: true,
           controls: true,
         });
+        console.log('TORRENT: Video rendering complete, setting loading to false');
         setLoading(false);
+      } else {
+        console.error('TORRENT: Video ref is null!');
       }
     };
 
     initTorrent();
 
     return () => {
+      console.log('=== TORRENT: Component unmounting, cleaning up ===');
       mounted = false;
       if (clientRef.current) {
+        console.log('TORRENT: Destroying client');
         clientRef.current.destroy();
       }
     };
