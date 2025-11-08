@@ -152,10 +152,25 @@ export default function Home() {
 
             {activeStream.type === 'magnet' && (
               <>
-                {/* Use client-side WebTorrent for large files (>500MB), server-side for small files */}
+                {/* Use server-side streaming for LARGE files (>500MB), client-side for SMALL files */}
                 {activeStream.streamInfo?.service === 'nextjs' && 
                  activeStream.streamInfo?.fileSize && 
                  activeStream.streamInfo.fileSize > 500 * 1024 * 1024 ? (
+                  <>
+                    <div className="max-w-4xl mx-auto mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                        <span className="text-green-900 font-medium">
+                          🖥️ Server-Side Streaming (Dedicated Backend)
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-700 mt-1 ml-4">
+                        Large file detected - using dedicated server with more resources for optimal performance
+                      </p>
+                    </div>
+                    <TorrentPlayerBackend magnet={activeStream.originalUrl} onError={handleError} />
+                  </>
+                ) : (
                   <>
                     <div className="max-w-4xl mx-auto mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                       <div className="flex items-center gap-2 text-sm">
@@ -165,25 +180,10 @@ export default function Home() {
                         </span>
                       </div>
                       <p className="text-xs text-purple-700 mt-1 ml-4">
-                        Large file detected - streaming directly in your browser for optimal performance
+                        Small file - streaming directly in your browser for quick playback
                       </p>
                     </div>
                     <TorrentPlayer magnet={activeStream.originalUrl} onError={handleError} />
-                  </>
-                ) : (
-                  <>
-                    <div className="max-w-4xl mx-auto mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                        <span className="text-green-900 font-medium">
-                          🖥️ Server-Side Streaming (Next.js Backend)
-                        </span>
-                      </div>
-                      <p className="text-xs text-green-700 mt-1 ml-4">
-                        Small file - streaming via server for quick delivery
-                      </p>
-                    </div>
-                    <TorrentPlayerBackend magnet={activeStream.originalUrl} onError={handleError} />
                   </>
                 )}
                 {activeStream.streamInfo?.downloadUrl && (

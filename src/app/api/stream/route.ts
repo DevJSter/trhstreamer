@@ -182,31 +182,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(response);
       }
       
-      // Check threshold - for very large files, use client-side WebTorrent
+      // Check threshold - for very large files, use server-side dedicated streaming
       if (shouldUseNodeService(metadata.size)) {
         console.log(
-          `Large file detected (${formatBytes(metadata.size)}) - will use client-side WebTorrent`
+          `Large file detected (${formatBytes(metadata.size)}) - routing to server-side streaming`
         );
         const response = handleViaNextjs(
           metadata.infoHash,
           metadata.name,
           metadata.size
         );
-        // Override the message to indicate client-side streaming
-        response.message = `Large file (${formatBytes(metadata.size)}) - using client-side WebTorrent for better performance`;
+        // Override the message to indicate server-side streaming for large files
+        response.message = `Large file (${formatBytes(metadata.size)}) - using dedicated server-side streaming`;
         return NextResponse.json(response);
       }
       
-      // Handle via Next.js server-side streaming
+      // Handle small files via client-side WebTorrent
       console.log(
-        `Small file detected (${formatBytes(metadata.size)}) - using server-side streaming`
+        `Small file detected (${formatBytes(metadata.size)}) - using client-side streaming`
       );
       const response = handleViaNextjs(
         metadata.infoHash,
         metadata.name,
         metadata.size
       );
-      response.message = `Small file (${formatBytes(metadata.size)}) - using server-side streaming`;
+      response.message = `Small file (${formatBytes(metadata.size)}) - using client-side browser streaming`;
       return NextResponse.json(response);
     }
     
