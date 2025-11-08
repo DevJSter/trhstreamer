@@ -17,7 +17,8 @@ interface StreamInfo {
 
 export default function Home() {
   const [activeStream, setActiveStream] = useState<{
-    url: string;
+    originalUrl: string; // Store the original magnet/m3u8 URL
+    streamUrl: string;   // Store the processed stream URL
     type: 'magnet' | 'hls';
     streamInfo?: StreamInfo;
   } | null>(null);
@@ -62,9 +63,10 @@ export default function Home() {
         console.log('Routing message:', streamInfo.message);
       }
       
-      // Set the stream with routing info
+      // Set the stream with routing info, keeping both original and processed URLs
       setActiveStream({ 
-        url: streamInfo.streamUrl, 
+        originalUrl: url,           // Keep the original magnet/m3u8 URL
+        streamUrl: streamInfo.streamUrl, // The processed stream URL for display
         type,
         streamInfo 
       });
@@ -149,7 +151,7 @@ export default function Home() {
 
             {activeStream.type === 'magnet' && (
               <>
-                <TorrentPlayerBackend magnet={activeStream.url} onError={handleError} />
+                <TorrentPlayerBackend magnet={activeStream.originalUrl} onError={handleError} />
                 {activeStream.streamInfo?.downloadUrl && (
                   <div className="text-center">
                     <a
@@ -166,7 +168,7 @@ export default function Home() {
 
             {activeStream.type === 'hls' && (
               <>
-                <HlsPlayer m3u8Url={activeStream.url} onError={handleError} />
+                <HlsPlayer m3u8Url={activeStream.originalUrl} onError={handleError} />
                 {activeStream.streamInfo?.downloadUrl && (
                   <div className="text-center">
                     <a
